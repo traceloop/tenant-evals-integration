@@ -6,8 +6,9 @@ from rich.table import Table
 from rich.panel import Panel
 from rich import print_json
 
+from datetime import datetime
 from .config import get_config, save_config
-from .api import AutoMonitorSetupClient, MonitoringClient, APIError
+from .api import AutoMonitorSetupClient, MonitoringClient, MetricsClient, APIError
 
 console = Console()
 
@@ -30,6 +31,33 @@ def get_monitoring_client() -> MonitoringClient:
         console.print("Run [cyan]evals-cli configure[/cyan] to set up authentication.")
         raise click.Abort()
     return MonitoringClient(config["base_url"], config["auth_token"])
+
+
+def get_metrics_client() -> MetricsClient:
+    """Get configured API client for metrics."""
+    config = get_config()
+    if not config["auth_token"]:
+        console.print("[red]Error: No auth token configured.[/red]")
+        console.print("Run [cyan]evals-cli configure[/cyan] to set up authentication.")
+        raise click.Abort()
+    return MetricsClient(config["base_url"], config["auth_token"])
+
+
+def parse_timestamp(value: str) -> int:
+    """Parse timestamp from epoch seconds or ISO date string."""
+    try:
+        return int(value)
+    except ValueError:
+        pass
+
+    for fmt in ["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S"]:
+        try:
+            dt = datetime.strptime(value, fmt)
+            return int(dt.timestamp())
+        except ValueError:
+            continue
+
+    raise click.BadParameter(f"Invalid timestamp format: {value}. Use epoch seconds or YYYY-MM-DD")
 
 
 @click.group()
@@ -239,6 +267,129 @@ def monitoring_status(as_json: bool):
             table.add_row("Reasons", ", ".join(reasons))
 
         console.print(table)
+
+    except APIError as e:
+        console.print(f"[red]Error: {e}[/red]")
+        raise click.Abort()
+
+
+@cli.group()
+def metrics():
+    """Query and analyze metrics data."""
+    pass
+
+
+@metrics.command("list")
+@click.option("--project-id", "-p", required=True, help="Project ID")
+@click.option("--from", "from_ts", required=True, help="Start timestamp (epoch seconds or YYYY-MM-DD)")
+@click.option("--to", "to_ts", help="End timestamp (epoch seconds or YYYY-MM-DD), defaults to now")
+@click.option("--environment", "-e", multiple=True, help="Filter by environment (can specify multiple)")
+@click.option("--metric-name", "-n", help="Filter by metric name")
+@click.option("--metric-source", "-s", help="Filter by metric source (e.g., 'openllmetry')")
+@click.option("--sort-by", default="event_time", help="Sort field (event_time, metric_name, numeric_value)")
+@click.option("--sort-order", type=click.Choice(["ASC", "DESC"]), default="DESC", help="Sort order")
+@click.option("--limit", "-l", type=int, default=50, help="Max results (default: 50)")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def metrics_list(
+    project_id: str,
+    from_ts: str,
+    to_ts: str,
+    environment: tuple,
+    metric_name: str,
+    metric_source: str,
+    sort_by: str,
+    sort_order: str,
+    limit: int,
+    as_json: bool,
+):
+    """List metrics with filtering and pagination.
+
+    Retrieves metrics data grouped by metric name with individual data points.
+
+    Examples:
+
+      # Get metrics from last 24 hours
+      evals-cli metrics list -p my-project --from 2024-01-01
+
+      # Filter by metric name and environment
+      evals-cli metrics list -p my-project --from 2024-01-01 -n llm.token.usage -e production
+    """
+    client = get_metrics_client()
+
+    from_timestamp = parse_timestamp(from_ts)
+    to_timestamp = parse_timestamp(to_ts) if to_ts else None
+
+    try:
+        result = client.get_metrics(
+            project_id=project_id,
+            from_timestamp_sec=from_timestamp,
+            to_timestamp_sec=to_timestamp,
+            environments=list(environment) if environment else None,
+            metric_name=metric_name,
+            metric_source=metric_source,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            limit=limit,
+        )
+
+        if as_json:
+            print_json(data=result)
+            return
+
+        metrics_data = result.get("metrics", {})
+        data = metrics_data.get("data", [])
+        total_points = metrics_data.get("total_points", 0)
+        total_results = metrics_data.get("total_results", 0)
+
+        if not data:
+            console.print("[yellow]No metrics found.[/yellow]")
+            return
+
+        console.print(Panel(
+            f"[cyan]Project: {project_id}[/cyan]",
+            title="Metrics"
+        ))
+
+        for group in data:
+            metric_name_val = group.get("metric_name", "Unknown")
+            points = group.get("points", [])
+
+            console.print(f"\n[bold magenta]{metric_name_val}[/bold magenta] ({len(points)} points)")
+
+            table = Table(show_header=True)
+            table.add_column("Value", style="green")
+            table.add_column("Time", style="cyan")
+            table.add_column("Environment", style="yellow")
+            table.add_column("Trace ID", style="dim")
+
+            for point in points[:10]:  # Show first 10 points per metric
+                value = ""
+                if point.get("numeric_value") is not None:
+                    value = str(point["numeric_value"])
+                elif point.get("enum_value"):
+                    value = point["enum_value"]
+                elif point.get("bool_value") is not None:
+                    value = str(point["bool_value"])
+
+                event_time = point.get("event_time", 0)
+                if event_time:
+                    dt = datetime.fromtimestamp(event_time / 1000)
+                    time_str = dt.strftime("%Y-%m-%d %H:%M:%S")
+                else:
+                    time_str = "N/A"
+
+                labels = point.get("labels", {})
+                env = labels.get("environment", "N/A")
+                trace_id = labels.get("trace_id", "N/A")[:12] + "..." if labels.get("trace_id") else "N/A"
+
+                table.add_row(value, time_str, env, trace_id)
+
+            if len(points) > 10:
+                table.add_row("[dim]...[/dim]", f"[dim]+{len(points) - 10} more[/dim]", "", "")
+
+            console.print(table)
+
+        console.print(f"\n[dim]Showing {total_points} points from {total_results} total results[/dim]")
 
     except APIError as e:
         console.print(f"[red]Error: {e}[/red]")

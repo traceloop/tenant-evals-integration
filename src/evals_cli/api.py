@@ -64,6 +64,91 @@ class MonitoringClient:
         return self._handle_response(response)
 
 
+class MetricsClient:
+    """Client for metrics API routes."""
+
+    def __init__(self, base_url: str, auth_token: str):
+        self.base_url = base_url.rstrip("/")
+        self.auth_token = auth_token
+
+    @property
+    def headers(self) -> dict:
+        return get_headers(self.auth_token)
+
+    def _handle_response(self, response: requests.Response) -> dict | list | None:
+        """Handle API response and raise errors if needed."""
+        if response.status_code >= 400:
+            try:
+                error_msg = response.json()
+            except Exception:
+                error_msg = response.text or "Unknown error"
+            raise APIError(response.status_code, str(error_msg))
+
+        if response.text:
+            return response.json()
+        return None
+
+    def get_metrics(
+        self,
+        project_id: str,
+        from_timestamp_sec: int,
+        to_timestamp_sec: Optional[int] = None,
+        environments: Optional[list[str]] = None,
+        metric_name: Optional[str] = None,
+        metric_source: Optional[str] = None,
+        filters: Optional[list[dict]] = None,
+        logical_operator: str = "AND",
+        sort_by: str = "event_time",
+        sort_order: str = "DESC",
+        limit: int = 50,
+        cursor: int = 0,
+    ) -> dict:
+        """
+        Get metrics with filtering and pagination.
+
+        Args:
+            project_id: Project ID
+            from_timestamp_sec: Start timestamp (epoch seconds)
+            to_timestamp_sec: End timestamp (epoch seconds), defaults to now
+            environments: Filter by environments
+            metric_name: Filter by specific metric name
+            metric_source: Filter by metric source (e.g., 'openllmetry', 'sdk')
+            filters: List of filter conditions
+            logical_operator: AND or OR for combining filters
+            sort_by: Sort field (event_time, metric_name, numeric_value, etc.)
+            sort_order: ASC or DESC
+            limit: Max results per page (default 50)
+            cursor: Pagination cursor
+
+        Returns:
+            Paginated metrics response with grouped data points
+        """
+        import time
+
+        url = f"{self.base_url}/v2/projects/{project_id}/metrics"
+
+        payload = {
+            "from_timestamp_sec": from_timestamp_sec,
+            "to_timestamp_sec": to_timestamp_sec or int(time.time()),
+            "environments": environments or [],
+            "sort_by": sort_by,
+            "sort_order": sort_order,
+            "limit": limit,
+            "cursor": cursor,
+            "logical_operator": logical_operator,
+        }
+
+        if metric_name:
+            payload["metric_name"] = metric_name
+        if metric_source:
+            payload["metric_source"] = metric_source
+        if filters:
+            payload["filters"] = filters
+
+        response = requests.post(url, headers=self.headers, json=payload)
+        return self._handle_response(response)
+
+
 class AutoMonitorSetupClient:
     """Client for auto-monitor-setup API routes."""
 

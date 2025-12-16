@@ -96,6 +96,39 @@ The status command shows:
 - **Lag in spans**: Number of spans not yet evaluated
 - **Reasons**: Why status is non-OK (e.g., `LAG_HIGH`, `NO_EVALUATION_DATA`)
 
+### Metrics
+
+**List metrics:**
+
+```bash
+# Get metrics from a specific date
+uv run evals-cli metrics list -p my-project --from 2024-01-01
+
+# Filter by metric name and environment
+uv run evals-cli metrics list -p my-project --from 2024-01-01 -n llm.token.usage -e production
+
+# Filter by metric source
+uv run evals-cli metrics list -p my-project --from 2024-01-01 -s openllmetry
+
+# Custom sorting and limit
+uv run evals-cli metrics list -p my-project --from 2024-01-01 --sort-by numeric_value --sort-order DESC --limit 100
+
+# Output as JSON
+uv run evals-cli metrics list -p my-project --from 2024-01-01 --json
+```
+
+Options:
+- `--project-id, -p` (required): Project ID
+- `--from` (required): Start timestamp (epoch seconds or YYYY-MM-DD)
+- `--to`: End timestamp (defaults to now)
+- `--environment, -e`: Filter by environment (can specify multiple)
+- `--metric-name, -n`: Filter by specific metric name
+- `--metric-source, -s`: Filter by source (e.g., 'openllmetry')
+- `--sort-by`: Sort field (event_time, metric_name, numeric_value)
+- `--sort-order`: ASC or DESC (default: DESC)
+- `--limit, -l`: Max results (default: 50)
+- `--json`: Output raw JSON
+
 ### Demo Mode
 
 Run an interactive demonstration of all API routes:
@@ -117,6 +150,7 @@ The CLI interacts with the following API endpoints:
 | GET | `/v2/auto-monitor-setups/:id` | Get a specific setup by ID |
 | DELETE | `/v2/auto-monitor-setups/:id` | Delete a setup |
 | GET | `/v2/monitoring/status` | Get evaluation pipeline status |
+| POST | `/v2/projects/:project_id/metrics` | Query metrics with filtering |
 
 ### Query Parameters (List)
 
@@ -162,3 +196,46 @@ Status values:
 Possible reasons:
 - `LAG_HIGH` - Evaluation lag exceeds threshold
 - `NO_EVALUATION_DATA` - No evaluation data available but spans exist
+
+### Metrics Request/Response
+
+**Request Body:**
+```json
+{
+  "from_timestamp_sec": 1702900000,
+  "to_timestamp_sec": 1702986400,
+  "environments": ["production"],
+  "metric_name": "llm.token.usage",
+  "metric_source": "openllmetry",
+  "sort_by": "event_time",
+  "sort_order": "DESC",
+  "limit": 50
+}
+```
+
+**Response:**
+```json
+{
+  "metrics": {
+    "data": [
+      {
+        "organization_id": "org-123",
+        "metric_name": "llm.token.usage",
+        "points": [
+          {
+            "numeric_value": 150.0,
+            "event_time": 1702986400000,
+            "labels": {
+              "metric_type": "counter",
+              "environment": "production",
+              "trace_id": "abc123"
+            }
+          }
+        ]
+      }
+    ],
+    "total_points": 50,
+    "total_results": 1234,
+    "next_cursor": "1702986400000"
+  }
+}
