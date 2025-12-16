@@ -150,7 +150,7 @@ The CLI interacts with the following API endpoints:
 | GET | `/v2/auto-monitor-setups/:id` | Get a specific setup by ID |
 | DELETE | `/v2/auto-monitor-setups/:id` | Delete a setup |
 | GET | `/v2/monitoring/status` | Get evaluation pipeline status |
-| POST | `/v2/projects/:project_id/metrics` | Query metrics with filtering |
+| POST | `/v2/metrics` | Query metrics with filtering |
 
 ### Query Parameters (List)
 
