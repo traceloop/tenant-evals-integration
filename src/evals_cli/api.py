@@ -149,6 +149,65 @@ class MetricsClient:
         return self._handle_response(response)
 
 
+class OrganizationClient:
+    """Client for organization API routes."""
+
+    def __init__(self, base_url: str, auth_token: str):
+        self.base_url = base_url.rstrip("/")
+        self.auth_token = auth_token
+        self.endpoint = f"{self.base_url}/v2/organizations"
+
+    @property
+    def headers(self) -> dict:
+        return get_headers(self.auth_token)
+
+    def _handle_response(self, response: requests.Response) -> dict | list | None:
+        """Handle API response and raise errors if needed."""
+        if response.status_code >= 400:
+            try:
+                error_msg = response.json()
+            except Exception:
+                error_msg = response.text or "Unknown error"
+            raise APIError(response.status_code, str(error_msg))
+
+        if response.text:
+            return response.json()
+        return None
+
+    def create(
+        self,
+        org_name: str,
+        environments: Optional[list[str]] = None,
+    ) -> dict:
+        """
+        Create a new organization with environments and API keys.
+
+        Args:
+            org_name: Name of the organization
+            environments: List of environment slugs (defaults to ['prd'])
+
+        Returns:
+            Created organization with org_id and environment API keys
+
+        Response format:
+            {
+                "org_id": "uuid",
+                "environments": [
+                    {"slug": "prd", "api_key": "tl_xxx"}
+                ]
+            }
+        """
+        payload = {
+            "org_name": org_name,
+        }
+
+        if environments:
+            payload["envs"] = environments
+
+        response = requests.post(self.endpoint, headers=self.headers, json=payload)
+        return self._handle_response(response)
+
+
 class AutoMonitorSetupClient:
     """Client for auto-monitor-setup API routes."""
 
