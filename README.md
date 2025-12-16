@@ -129,6 +129,28 @@ Options:
 - `--limit, -l`: Max results (default: 50)
 - `--json`: Output raw JSON
 
+### Organizations
+
+**Create an organization:**
+
+```bash
+# Create with default environment (prd)
+uv run evals-cli org create -n "My Organization"
+
+# Create with multiple environments
+uv run evals-cli org create -n "My Organization" -e dev -e staging -e prd
+
+# Output as JSON
+uv run evals-cli org create -n "My Organization" --json
+```
+
+Options:
+- `--name, -n` (required): Organization name
+- `--env, -e`: Environment slug (can specify multiple, defaults to 'prd')
+- `--json`: Output raw JSON
+
+The response includes the organization ID and API keys for each environment.
+
 ### Demo Mode
 
 Run an interactive demonstration of all API routes:
@@ -138,6 +160,30 @@ uv run evals-cli demo
 ```
 
 This will walk through creating, listing, retrieving, and testing the auto-monitor-setup endpoints.
+
+### Sample Application
+
+A complete sample application is included that demonstrates the full workflow:
+
+```bash
+# Run the full demo (all 4 steps)
+uv run python sample_app.py
+
+# Run individual steps
+uv run python sample_app.py --step 1  # Create organization
+uv run python sample_app.py --step 2  # Create monitor setup
+uv run python sample_app.py --step 3  # Check monitoring status
+uv run python sample_app.py --step 4  # Get metrics
+
+# With JSON output
+uv run python sample_app.py --json
+```
+
+The sample app walks through:
+1. **Create Organization** - Creates "Demo Organization" with prd environment
+2. **Create Monitor Setup** - Sets up monitoring for `pirate_tech_joke_generator` workflow with `char-count` evaluator
+3. **Check Status** - Retrieves evaluation pipeline status
+4. **Get Metrics** - Fetches metrics from the last 7 days
 
 ## API Routes
 
@@ -151,6 +197,7 @@ The CLI interacts with the following API endpoints:
 | DELETE | `/v2/auto-monitor-setups/:id` | Delete a setup |
 | GET | `/v2/monitoring/status` | Get evaluation pipeline status |
 | POST | `/v2/metrics` | Query metrics with filtering |
+| POST | `/v2/organizations` | Create a new organization |
 
 ### Query Parameters (List)
 
@@ -238,4 +285,26 @@ Possible reasons:
     "total_results": 1234,
     "next_cursor": "1702986400000"
   }
+}
+```
+
+### Create Organization Request/Response
+
+**Request Body:**
+```json
+{
+  "org_name": "My Organization",
+  "envs": ["dev", "staging", "prd"]
+}
+```
+
+**Response:**
+```json
+{
+  "org_id": "uuid-string",
+  "environments": [
+    {"slug": "dev", "api_key": "tl_xxx..."},
+    {"slug": "staging", "api_key": "tl_yyy..."},
+    {"slug": "prd", "api_key": "tl_zzz..."}
+  ]
 }

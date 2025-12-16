@@ -8,7 +8,7 @@ from rich import print_json
 
 from datetime import datetime
 from .config import get_config, save_config
-from .api import AutoMonitorSetupClient, MonitoringClient, MetricsClient, APIError
+from .api import AutoMonitorSetupClient, MonitoringClient, MetricsClient, OrganizationClient, APIError
 
 console = Console()
 
@@ -41,6 +41,16 @@ def get_metrics_client() -> MetricsClient:
         console.print("Run [cyan]evals-cli configure[/cyan] to set up authentication.")
         raise click.Abort()
     return MetricsClient(config["base_url"], config["auth_token"])
+
+
+def get_organization_client() -> OrganizationClient:
+    """Get configured API client for organizations."""
+    config = get_config()
+    if not config["auth_token"]:
+        console.print("[red]Error: No auth token configured.[/red]")
+        console.print("Run [cyan]evals-cli configure[/cyan] to set up authentication.")
+        raise click.Abort()
+    return OrganizationClient(config["base_url"], config["auth_token"])
 
 
 def parse_timestamp(value: str) -> int:
@@ -393,6 +403,83 @@ def metrics_list(
 
     except APIError as e:
         console.print(f"[red]Error: {e}[/red]")
+        raise click.Abort()
+
+
+@cli.group()
+def org():
+    """Manage organizations."""
+    pass
+
+
+@org.command("create")
+@click.option("--name", "-n", required=True, help="Organization name")
+@click.option("--env", "-e", multiple=True, help="Environment slug (can specify multiple, defaults to 'prd')")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def org_create(name: str, env: tuple, as_json: bool):
+    """Create a new organization with environments and API keys.
+
+    Creates an organization with the specified environments. Each environment
+    gets its own API key. If no environments are specified, defaults to 'prd'.
+
+    Examples:
+
+      # Create with default environment (prd)
+      evals-cli org create -n "My Organization"
+
+      # Create with multiple environments
+      evals-cli org create -n "My Organization" -e dev -e staging -e prd
+    """
+    client = get_organization_client()
+
+    try:
+        result = client.create(
+            org_name=name,
+            environments=list(env) if env else None,
+        )
+
+        if as_json:
+            print_json(data=result)
+            return
+
+        org_id = result.get("org_id", "N/A")
+        environments = result.get("environments", [])
+
+        console.print(Panel(
+            f"[green]Organization created successfully![/green]",
+            title="Success"
+        ))
+
+        table = Table(show_header=False, box=None)
+        table.add_column("Field", style="dim")
+        table.add_column("Value")
+
+        table.add_row("Organization ID", f"[cyan]{org_id}[/cyan]")
+        table.add_row("", "")
+
+        console.print(table)
+
+        if environments:
+            env_table = Table(title="Environment API Keys")
+            env_table.add_column("Environment", style="magenta")
+            env_table.add_column("API Key", style="green")
+
+            for env_data in environments:
+                env_table.add_row(
+                    env_data.get("slug", "N/A"),
+                    env_data.get("api_key", "N/A"),
+                )
+
+            console.print(env_table)
+            console.print("\n[yellow]Important: Save these API keys securely. They won't be shown again.[/yellow]")
+
+    except APIError as e:
+        if e.status_code == 403:
+            console.print("[red]Error: Not allowed to create organizations.[/red]")
+        elif e.status_code == 400:
+            console.print(f"[red]Error: Invalid request - {e.message}[/red]")
+        else:
+            console.print(f"[red]Error: {e}[/red]")
         raise click.Abort()
 
 
