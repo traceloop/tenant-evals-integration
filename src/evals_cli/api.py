@@ -1,4 +1,4 @@
-"""API client for auto-monitor-setup routes."""
+"""API clients for evals routes."""
 
 import requests
 from typing import Optional
@@ -12,6 +12,56 @@ class APIError(Exception):
         self.status_code = status_code
         self.message = message
         super().__init__(f"HTTP {status_code}: {message}")
+
+
+class MonitoringClient:
+    """Client for monitoring API routes."""
+
+    def __init__(self, base_url: str, auth_token: str):
+        self.base_url = base_url.rstrip("/")
+        self.auth_token = auth_token
+        self.endpoint = f"{self.base_url}/v2/monitoring"
+
+    @property
+    def headers(self) -> dict:
+        return get_headers(self.auth_token)
+
+    def _handle_response(self, response: requests.Response) -> dict | list | None:
+        """Handle API response and raise errors if needed."""
+        if response.status_code >= 400:
+            try:
+                error_msg = response.json()
+            except Exception:
+                error_msg = response.text or "Unknown error"
+            raise APIError(response.status_code, str(error_msg))
+
+        if response.text:
+            return response.json()
+        return None
+
+    def get_status(self) -> dict:
+        """
+        Get monitoring status for the organization.
+
+        Returns the evaluation pipeline status including lag and health status.
+
+        Response fields:
+            - organization_id: Organization identifier
+            - environment: Environment name (optional)
+            - project: Project name (optional)
+            - evaluated_up_to: Timestamp of last evaluation (optional)
+            - latest_span_received: Timestamp of most recent span (optional)
+            - lag_in_seconds: Evaluation lag in seconds
+            - lag_in_spans: Number of spans not yet evaluated
+            - status: OK | DEGRADED | ERROR
+            - reasons: List of reasons for non-OK status
+
+        Returns:
+            Monitoring status object
+        """
+        url = f"{self.endpoint}/status"
+        response = requests.get(url, headers=self.headers)
+        return self._handle_response(response)
 
 
 class AutoMonitorSetupClient:

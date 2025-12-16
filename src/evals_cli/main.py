@@ -7,19 +7,29 @@ from rich.panel import Panel
 from rich import print_json
 
 from .config import get_config, save_config
-from .api import AutoMonitorSetupClient, APIError
+from .api import AutoMonitorSetupClient, MonitoringClient, APIError
 
 console = Console()
 
 
 def get_client() -> AutoMonitorSetupClient:
-    """Get configured API client."""
+    """Get configured API client for auto-monitor-setups."""
     config = get_config()
     if not config["auth_token"]:
         console.print("[red]Error: No auth token configured.[/red]")
         console.print("Run [cyan]evals-cli configure[/cyan] to set up authentication.")
         raise click.Abort()
     return AutoMonitorSetupClient(config["base_url"], config["auth_token"])
+
+
+def get_monitoring_client() -> MonitoringClient:
+    """Get configured API client for monitoring."""
+    config = get_config()
+    if not config["auth_token"]:
+        console.print("[red]Error: No auth token configured.[/red]")
+        console.print("Run [cyan]evals-cli configure[/cyan] to set up authentication.")
+        raise click.Abort()
+    return MonitoringClient(config["base_url"], config["auth_token"])
 
 
 @click.group()
@@ -153,6 +163,85 @@ def setup_delete(setup_id: str, yes: bool):
             console.print(f"[red]Error: Setup '{setup_id}' not found.[/red]")
         else:
             console.print(f"[red]Error: {e}[/red]")
+        raise click.Abort()
+
+
+@cli.group()
+def monitoring():
+    """View monitoring status and pipeline health."""
+    pass
+
+
+@monitoring.command("status")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def monitoring_status(as_json: bool):
+    """Get monitoring status for the organization.
+
+    Shows evaluation pipeline health including lag metrics and status.
+
+    Status values:
+      - OK: lag <= 3 minutes
+      - DEGRADED: 3min < lag <= 10min
+      - ERROR: lag > 10min or no evaluation data
+    """
+    client = get_monitoring_client()
+
+    try:
+        result = client.get_status()
+
+        if as_json:
+            print_json(data=result)
+            return
+
+        status = result.get("status", "UNKNOWN")
+        status_color = {
+            "OK": "green",
+            "DEGRADED": "yellow",
+            "ERROR": "red",
+        }.get(status, "white")
+
+        console.print(Panel(
+            f"[bold {status_color}]{status}[/bold {status_color}]",
+            title="Monitoring Status"
+        ))
+
+        table = Table(show_header=False, box=None)
+        table.add_column("Field", style="dim")
+        table.add_column("Value")
+
+        table.add_row("Organization", result.get("organization_id", "N/A"))
+
+        if result.get("environment"):
+            table.add_row("Environment", result["environment"])
+        if result.get("project"):
+            table.add_row("Project", result["project"])
+
+        table.add_row("", "")  # Spacer
+
+        evaluated_up_to = result.get("evaluated_up_to")
+        table.add_row("Evaluated Up To", evaluated_up_to or "[dim]N/A[/dim]")
+
+        latest_span = result.get("latest_span_received")
+        table.add_row("Latest Span Received", latest_span or "[dim]N/A[/dim]")
+
+        table.add_row("", "")  # Spacer
+
+        lag_seconds = result.get("lag_in_seconds", 0)
+        lag_spans = result.get("lag_in_spans", 0)
+
+        lag_color = "green" if lag_seconds <= 180 else ("yellow" if lag_seconds <= 600 else "red")
+        table.add_row("Lag (seconds)", f"[{lag_color}]{lag_seconds}[/{lag_color}]")
+        table.add_row("Lag (spans)", str(lag_spans))
+
+        reasons = result.get("reasons", [])
+        if reasons:
+            table.add_row("", "")  # Spacer
+            table.add_row("Reasons", ", ".join(reasons))
+
+        console.print(table)
+
+    except APIError as e:
+        console.print(f"[red]Error: {e}[/red]")
         raise click.Abort()
 
 

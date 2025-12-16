@@ -78,6 +78,24 @@ uv run evals-cli setup delete <setup-id>
 uv run evals-cli setup delete <setup-id> --yes
 ```
 
+### Monitoring
+
+**Get pipeline status:**
+
+```bash
+# Formatted output with color-coded status
+uv run evals-cli monitoring status
+
+# Output as JSON
+uv run evals-cli monitoring status --json
+```
+
+The status command shows:
+- **Status**: `OK` (lag <= 3min), `DEGRADED` (3-10min lag), or `ERROR` (>10min lag or no data)
+- **Lag in seconds**: Time since last evaluation
+- **Lag in spans**: Number of spans not yet evaluated
+- **Reasons**: Why status is non-OK (e.g., `LAG_HIGH`, `NO_EVALUATION_DATA`)
+
 ### Demo Mode
 
 Run an interactive demonstration of all API routes:
@@ -98,6 +116,7 @@ The CLI interacts with the following API endpoints:
 | GET | `/v2/auto-monitor-setups` | List all setups (with optional filters) |
 | GET | `/v2/auto-monitor-setups/:id` | Get a specific setup by ID |
 | DELETE | `/v2/auto-monitor-setups/:id` | Delete a setup |
+| GET | `/v2/monitoring/status` | Get evaluation pipeline status |
 
 ### Query Parameters (List)
 
@@ -118,3 +137,28 @@ The CLI interacts with the following API endpoints:
 ```
 
 Note: Each evaluator must have either `evaluator_id` OR `evaluator_type`, not both.
+
+### Monitoring Status Response
+
+```json
+{
+  "organization_id": "org-123",
+  "environment": "production",
+  "project": "my-project",
+  "evaluated_up_to": "2024-01-15T10:30:00Z",
+  "latest_span_received": "2024-01-15T10:32:00Z",
+  "lag_in_seconds": 120,
+  "lag_in_spans": 45,
+  "status": "OK",
+  "reasons": []
+}
+```
+
+Status values:
+- `OK` - Lag <= 3 minutes
+- `DEGRADED` - Lag between 3-10 minutes
+- `ERROR` - Lag > 10 minutes or no evaluation data
+
+Possible reasons:
+- `LAG_HIGH` - Evaluation lag exceeds threshold
+- `NO_EVALUATION_DATA` - No evaluation data available but spans exist
