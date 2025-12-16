@@ -1,0 +1,19 @@
+[project]
+name = "evals-cli"
+version = "0.1.0"
+description = "CLI tool for managing auto-monitor-setups and evaluations"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "click>=8.0.0",
+    "requests>=2.28.0",
+    "rich>=13.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.scripts]
+evals-cli = "evals_cli.main:cli"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
