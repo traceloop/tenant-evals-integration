@@ -196,7 +196,7 @@ The CLI interacts with the following API endpoints:
 | GET | `/v2/auto-monitor-setups/:id` | Get a specific setup by ID |
 | DELETE | `/v2/auto-monitor-setups/:id` | Delete a setup |
 | GET | `/v2/monitoring/status` | Get evaluation pipeline status |
-| POST | `/v2/metrics` | Query metrics with filtering |
+| GET | `/v2/metrics` | Query metrics with filtering |
 | POST | `/v2/organizations` | Create a new organization |
 
 ### Query Parameters (List)
@@ -246,19 +246,24 @@ Possible reasons:
 
 ### Metrics Request/Response
 
-**Request Body:**
-```json
-{
-  "from_timestamp_sec": 1702900000,
-  "to_timestamp_sec": 1702986400,
-  "environments": ["production"],
-  "metric_name": "llm.token.usage",
-  "metric_source": "openllmetry",
-  "sort_by": "event_time",
-  "sort_order": "DESC",
-  "limit": 50
-}
+**Query Parameters:**
 ```
+GET /v2/metrics?from_timestamp_sec=1702900000&to_timestamp_sec=1702986400&environments=production&metric_name=llm.token.usage&metric_source=openllmetry&sort_by=event_time&sort_order=DESC&limit=50
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from_timestamp_sec` | int64 | Yes | Start timestamp in seconds |
+| `to_timestamp_sec` | int64 | Yes | End timestamp in seconds |
+| `environments` | []string | No | List of environments |
+| `metric_name` | string | No | Filter by specific metric name |
+| `metric_source` | string | No | Filter by metric source |
+| `sort_by` | string | No | Sort field (default: event_time) |
+| `sort_order` | string | No | ASC or DESC (default: DESC) |
+| `limit` | int | No | Number of results (default: 50) |
+| `cursor` | int64 | No | Cursor for pagination |
+| `filters` | JSON string | No | JSON-encoded filter conditions |
+| `logical_operator` | string | No | AND or OR for combining filters |
 
 **Response:**
 ```json

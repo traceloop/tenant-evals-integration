@@ -140,7 +140,7 @@ DEFAULT_PROJECT = "default"
 
 ### 4. Get Metrics
 
-**Route:** `POST /v2/metrics`
+**Route:** `GET /v2/metrics`
 
 **Headers:**
 ```json
@@ -150,51 +150,53 @@ DEFAULT_PROJECT = "default"
 }
 ```
 
-**Payload:**
-```json
-{
-  "from_timestamp_sec": 1701900000,
-  "to_timestamp_sec": 1702500000,
-  "environments": [],
-  "sort_by": "event_time",
-  "sort_order": "DESC",
-  "limit": 10,
-  "cursor": 0,
-  "logical_operator": "AND"
-}
+**Query Parameters:**
+```
+?from_timestamp_sec=1701900000&to_timestamp_sec=1702500000&sort_by=event_time&sort_order=DESC&limit=10&cursor=0&logical_operator=AND
 ```
 
-**Optional Payload Fields:**
-```json
-{
-  "metric_name": "char-count",
-  "metric_source": "openllmetry",
-  "value_type": "numeric",
-  "filters": [
-    {
-      "field": "workflow",
-      "operator": "eq",
-      "value": "pirate_tech_joke_generator"
-    }
-  ]
-}
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from_timestamp_sec` | int64 | Yes | Start timestamp in seconds |
+| `to_timestamp_sec` | int64 | Yes | End timestamp in seconds |
+| `environments` | []string | No | List of environments |
+| `metric_name` | string | No | Filter by specific metric name |
+| `metric_source` | string | No | Filter by metric source |
+| `sort_by` | string | No | Sort field (default: event_time) |
+| `sort_order` | string | No | ASC or DESC (default: DESC) |
+| `limit` | int | No | Number of results (default: 50) |
+| `cursor` | int64 | No | Cursor for pagination |
+| `filters` | JSON string | No | JSON-encoded filter conditions |
+| `logical_operator` | string | No | AND or OR for combining filters |
+
+**Example with filters:**
+```
+?from_timestamp_sec=1701900000&to_timestamp_sec=1702500000&metric_name=char-count&filters=[{"field":"workflow","operator":"eq","value":"pirate_tech_joke_generator"}]
 ```
 
 **Response:**
 ```json
 {
-  "data": [
-    {
-      "metric_name": "char-count",
-      "metric_source": "openllmetry",
-      "event_time": 1702500000,
-      "numeric_value": 150,
-      "string_value": null,
-      "metadata": {}
-    }
-  ],
-  "cursor": 10,
-  "has_more": false
+  "metrics": {
+    "data": [
+      {
+        "metric_name": "char-count",
+        "points": [
+          {
+            "numeric_value": 150,
+            "event_time": 1702500000000,
+            "labels": {
+              "metric_type": "counter",
+              "environment": "prd",
+              "trace_id": "abc123"
+            }
+          }
+        ]
+      }
+    ],
+    "total_points": 10,
+    "total_results": 100
+  }
 }
 ```
 
@@ -223,7 +225,7 @@ DEFAULT_PROJECT = "default"
             ▼
 ┌─────────────────────────┐
 │  4. Fetch Metrics       │
-│  POST /v2/metrics       │
+│  GET /v2/metrics        │
 └─────────────────────────┘
 ```
 
