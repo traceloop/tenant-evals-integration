@@ -125,7 +125,7 @@ class MetricsClient:
         """
         import time
 
-        url = f"{self.base_url}/v2/projects/{project_id}/metrics"
+        url = f"{self.base_url}/v2/metrics"
 
         payload = {
             "from_timestamp_sec": from_timestamp_sec,
