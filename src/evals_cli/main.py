@@ -290,7 +290,6 @@ def metrics():
 
 
 @metrics.command("list")
-@click.option("--project-id", "-p", required=True, help="Project ID")
 @click.option("--from", "from_ts", required=True, help="Start timestamp (epoch seconds or YYYY-MM-DD)")
 @click.option("--to", "to_ts", help="End timestamp (epoch seconds or YYYY-MM-DD), defaults to now")
 @click.option("--environment", "-e", multiple=True, help="Filter by environment (can specify multiple)")
@@ -301,7 +300,6 @@ def metrics():
 @click.option("--limit", "-l", type=int, default=50, help="Max results (default: 50)")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
 def metrics_list(
-    project_id: str,
     from_ts: str,
     to_ts: str,
     environment: tuple,
