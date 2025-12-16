@@ -161,6 +161,30 @@ uv run evals-cli demo
 
 This will walk through creating, listing, retrieving, and testing the auto-monitor-setup endpoints.
 
+### Sample Application
+
+A complete sample application is included that demonstrates the full workflow:
+
+```bash
+# Run the full demo (all 4 steps)
+uv run python sample_app.py
+
+# Run individual steps
+uv run python sample_app.py --step 1  # Create organization
+uv run python sample_app.py --step 2  # Create monitor setup
+uv run python sample_app.py --step 3  # Check monitoring status
+uv run python sample_app.py --step 4  # Get metrics
+
+# With JSON output
+uv run python sample_app.py --json
+```
+
+The sample app walks through:
+1. **Create Organization** - Creates "Demo Organization" with prd environment
+2. **Create Monitor Setup** - Sets up monitoring for `pirate_tech_joke_generator` workflow with `char-count` evaluator
+3. **Check Status** - Retrieves evaluation pipeline status
+4. **Get Metrics** - Fetches metrics from the last 7 days
+
 ## API Routes
 
 The CLI interacts with the following API endpoints:
