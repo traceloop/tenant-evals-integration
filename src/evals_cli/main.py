@@ -290,7 +290,6 @@ def metrics():
 
 
 @metrics.command("list")
-@click.option("--project-id", "-p", required=True, help="Project ID")
 @click.option("--from", "from_ts", required=True, help="Start timestamp (epoch seconds or YYYY-MM-DD)")
 @click.option("--to", "to_ts", help="End timestamp (epoch seconds or YYYY-MM-DD), defaults to now")
 @click.option("--environment", "-e", multiple=True, help="Filter by environment (can specify multiple)")
@@ -301,7 +300,6 @@ def metrics():
 @click.option("--limit", "-l", type=int, default=50, help="Max results (default: 50)")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
 def metrics_list(
-    project_id: str,
     from_ts: str,
     to_ts: str,
     environment: tuple,
@@ -319,10 +317,10 @@ def metrics_list(
     Examples:
 
       # Get metrics from last 24 hours
-      evals-cli metrics list -p my-project --from 2024-01-01
+      evals-cli metrics list --from 2024-01-01
 
       # Filter by metric name and environment
-      evals-cli metrics list -p my-project --from 2024-01-01 -n llm.token.usage -e production
+      evals-cli metrics list --from 2024-01-01 -n llm.token.usage -e production
     """
     client = get_metrics_client()
 
@@ -331,7 +329,6 @@ def metrics_list(
 
     try:
         result = client.get_metrics(
-            project_id=project_id,
             from_timestamp_sec=from_timestamp,
             to_timestamp_sec=to_timestamp,
             environments=list(environment) if environment else None,
@@ -356,7 +353,7 @@ def metrics_list(
             return
 
         console.print(Panel(
-            f"[cyan]Project: {project_id}[/cyan]",
+            "[cyan]Metrics Results[/cyan]",
             title="Metrics"
         ))
 

@@ -102,23 +102,22 @@ The status command shows:
 
 ```bash
 # Get metrics from a specific date
-uv run evals-cli metrics list -p my-project --from 2024-01-01
+uv run evals-cli metrics list --from 2024-01-01
 
 # Filter by metric name and environment
-uv run evals-cli metrics list -p my-project --from 2024-01-01 -n llm.token.usage -e production
+uv run evals-cli metrics list --from 2024-01-01 -n llm.token.usage -e production
 
 # Filter by metric source
-uv run evals-cli metrics list -p my-project --from 2024-01-01 -s openllmetry
+uv run evals-cli metrics list --from 2024-01-01 -s openllmetry
 
 # Custom sorting and limit
-uv run evals-cli metrics list -p my-project --from 2024-01-01 --sort-by numeric_value --sort-order DESC --limit 100
+uv run evals-cli metrics list --from 2024-01-01 --sort-by numeric_value --sort-order DESC --limit 100
 
 # Output as JSON
-uv run evals-cli metrics list -p my-project --from 2024-01-01 --json
+uv run evals-cli metrics list --from 2024-01-01 --json
 ```
 
 Options:
-- `--project-id, -p` (required): Project ID
 - `--from` (required): Start timestamp (epoch seconds or YYYY-MM-DD)
 - `--to`: End timestamp (defaults to now)
 - `--environment, -e`: Filter by environment (can specify multiple)
@@ -196,7 +195,7 @@ The CLI interacts with the following API endpoints:
 | GET | `/v2/auto-monitor-setups/:id` | Get a specific setup by ID |
 | DELETE | `/v2/auto-monitor-setups/:id` | Delete a setup |
 | GET | `/v2/monitoring/status` | Get evaluation pipeline status |
-| POST | `/v2/metrics` | Query metrics with filtering |
+| GET | `/v2/metrics` | Query metrics with filtering |
 | POST | `/v2/organizations` | Create a new organization |
 
 ### Query Parameters (List)
@@ -246,19 +245,24 @@ Possible reasons:
 
 ### Metrics Request/Response
 
-**Request Body:**
-```json
-{
-  "from_timestamp_sec": 1702900000,
-  "to_timestamp_sec": 1702986400,
-  "environments": ["production"],
-  "metric_name": "llm.token.usage",
-  "metric_source": "openllmetry",
-  "sort_by": "event_time",
-  "sort_order": "DESC",
-  "limit": 50
-}
+**Query Parameters:**
 ```
+GET /v2/metrics?from_timestamp_sec=1702900000&to_timestamp_sec=1702986400&environments=production&metric_name=llm.token.usage&metric_source=openllmetry&sort_by=event_time&sort_order=DESC&limit=50
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from_timestamp_sec` | int64 | Yes | Start timestamp in seconds |
+| `to_timestamp_sec` | int64 | Yes | End timestamp in seconds |
+| `environments` | []string | No | List of environments |
+| `metric_name` | string | No | Filter by specific metric name |
+| `metric_source` | string | No | Filter by metric source |
+| `sort_by` | string | No | Sort field (default: event_time) |
+| `sort_order` | string | No | ASC or DESC (default: DESC) |
+| `limit` | int | No | Number of results (default: 50) |
+| `cursor` | int64 | No | Cursor for pagination |
+| `filters` | JSON string | No | JSON-encoded filter conditions |
+| `logical_operator` | string | No | AND or OR for combining filters |
 
 **Response:**
 ```json

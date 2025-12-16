@@ -12,7 +12,6 @@ from evals_cli.api import (
 
 BASE_URL = "http://localhost:8080"
 AUTH_TOKEN = "Bearer your-auth-token-here"
-DEFAULT_PROJECT = "default"
 
 
 def create_organization() -> dict:
@@ -34,13 +33,12 @@ def check_monitoring_status(api_key: str) -> dict:
     return client.get_status()
 
 
-def get_metrics(api_key: str, project_id: str = DEFAULT_PROJECT) -> dict:
+def get_metrics(api_key: str) -> dict:
     client = MetricsClient(BASE_URL, api_key)
     from_timestamp = int((datetime.now() - timedelta(days=7)).timestamp())
     to_timestamp = int(datetime.now().timestamp())
 
     return client.get_metrics(
-        project_id=project_id,
         from_timestamp_sec=from_timestamp,
         to_timestamp_sec=to_timestamp,
         limit=10,

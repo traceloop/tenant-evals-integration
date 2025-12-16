@@ -1,5 +1,6 @@
 """API clients for evals routes."""
 
+import json
 import requests
 from typing import Optional
 from .config import get_headers
@@ -90,7 +91,6 @@ class MetricsClient:
 
     def get_metrics(
         self,
-        project_id: str,
         from_timestamp_sec: int,
         to_timestamp_sec: Optional[int] = None,
         environments: Optional[list[str]] = None,
@@ -107,7 +107,6 @@ class MetricsClient:
         Get metrics with filtering and pagination.
 
         Args:
-            project_id: Project ID
             from_timestamp_sec: Start timestamp (epoch seconds)
             to_timestamp_sec: End timestamp (epoch seconds), defaults to now
             environments: Filter by environments
@@ -127,10 +126,9 @@ class MetricsClient:
 
         url = f"{self.base_url}/v2/metrics"
 
-        payload = {
+        params = {
             "from_timestamp_sec": from_timestamp_sec,
             "to_timestamp_sec": to_timestamp_sec or int(time.time()),
-            "environments": environments or [],
             "sort_by": sort_by,
             "sort_order": sort_order,
             "limit": limit,
@@ -138,14 +136,19 @@ class MetricsClient:
             "logical_operator": logical_operator,
         }
 
-        if metric_name:
-            payload["metric_name"] = metric_name
-        if metric_source:
-            payload["metric_source"] = metric_source
-        if filters:
-            payload["filters"] = filters
+        # Add environments as repeated query params
+        if environments:
+            params["environments"] = environments
 
-        response = requests.post(url, headers=self.headers, json=payload)
+        if metric_name:
+            params["metric_name"] = metric_name
+        if metric_source:
+            params["metric_source"] = metric_source
+        if filters:
+            # Filters need to be JSON-encoded as a string
+            params["filters"] = json.dumps(filters)
+
+        response = requests.get(url, headers=self.headers, params=params)
         return self._handle_response(response)
 
 
