@@ -102,23 +102,22 @@ The status command shows:
 
 ```bash
 # Get metrics from a specific date
-uv run evals-cli metrics list -p my-project --from 2024-01-01
+uv run evals-cli metrics list --from 2024-01-01
 
 # Filter by metric name and environment
-uv run evals-cli metrics list -p my-project --from 2024-01-01 -n llm.token.usage -e production
+uv run evals-cli metrics list --from 2024-01-01 -n llm.token.usage -e production
 
 # Filter by metric source
-uv run evals-cli metrics list -p my-project --from 2024-01-01 -s openllmetry
+uv run evals-cli metrics list --from 2024-01-01 -s openllmetry
 
 # Custom sorting and limit
-uv run evals-cli metrics list -p my-project --from 2024-01-01 --sort-by numeric_value --sort-order DESC --limit 100
+uv run evals-cli metrics list --from 2024-01-01 --sort-by numeric_value --sort-order DESC --limit 100
 
 # Output as JSON
-uv run evals-cli metrics list -p my-project --from 2024-01-01 --json
+uv run evals-cli metrics list --from 2024-01-01 --json
 ```
 
 Options:
-- `--project-id, -p` (required): Project ID
 - `--from` (required): Start timestamp (epoch seconds or YYYY-MM-DD)
 - `--to`: End timestamp (defaults to now)
 - `--environment, -e`: Filter by environment (can specify multiple)

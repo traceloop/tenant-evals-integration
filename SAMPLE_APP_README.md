@@ -24,7 +24,6 @@ Update these constants in `sample_app.py`:
 ```python
 BASE_URL = "http://localhost:8080"
 AUTH_TOKEN = "Bearer your-auth-token-here"
-DEFAULT_PROJECT = "default"
 ```
 
 ## API Routes and Payloads
